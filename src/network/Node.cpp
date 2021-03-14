@@ -8,11 +8,11 @@
 namespace CASENA
 {
 	Node::Node(){Initialize();}
-	Node::Node(const Node& node){*this = node;}
+	Node::Node(const Node& node) : Component(node){*this = node;}
 	Node::~Node(){Reset();}
 	Node& Node::operator=(const Node& node)
 	{
-		id = node.id;
+		Component::operator=(node);
 		for(unsigned int i = 0 ; i < HistoryCount ; i++)
 		{
 			voltages[i] = node.voltages[i];
@@ -20,9 +20,11 @@ namespace CASENA
 		branches = node.branches;
 		return *this;
 	}
-	void Node::Reset(){Initialize();}
-	void Node::ID(const unsigned int& value){id = value;}
-	unsigned int Node::ID() const{return id;}
+	void Node::Reset()
+	{
+		Initialize();
+		Component::Reset();
+	}
 	double Node::Voltage() const{return voltages[0];}
 	double Node::PreviousVoltage() const{return voltages[1];}
 	void Node::Voltage(const double& value)
@@ -40,7 +42,7 @@ namespace CASENA
 	}
 	unsigned int Node::BranchCount() const{return branches.Size();}
 	const EZ::List<const Branch*>* Node::Branches() const{return &branches;}
-	double Node::Equation(const double* variables) const
+	void Node::Equation(EZ::Math::Matrix& f) const
 	{
 		// all node and branch IDs are zero based
 		// no checks on topology consistency are made here, the network 
@@ -56,11 +58,11 @@ namespace CASENA
 			if(branch->StartNode() == this)		branch_direction = 1.0;
 			else if(branch->EndNode() == this)	branch_direction = -1.0;
 			else 								continue;
-			current_sum += (branch_direction*variables[branch->ID()]);
+			current_sum += (branch_direction*branch->Current());
 		}
-		return current_sum;
+		f(ID(),0,current_sum);
 	}
-	void Node::Gradients(const double* variables,double* gradients) const
+	void Node::Gradients(EZ::Math::Matrix& A) const
 	{
 		// all node and branch IDs are zero based
 		// no checks on topology consistency are made here, the network 
@@ -68,17 +70,17 @@ namespace CASENA
 		// branches and vice versa, ...)
 		const Branch* branch = 0;
 		unsigned int branch_id = 0;
+		unsigned int node_id = ID();
 		for(EZ::ListItem<const Branch*>* item = branches.Start() ; item != 0 ; item = item->Next())
 		{
 			branch = item->Data();
 			branch_id = branch->ID();
-			if(branch->StartNode() == this)		gradients[branch_id] = 1.0;
-			else if(branch->EndNode() == this)	gradients[branch_id] = -1.0;
+			if(branch->StartNode() == this)		A(node_id,branch_id,1.0);
+			else if(branch->EndNode() == this)	A(node_id,branch_id,-1.0);
 		}
 	}
 	void Node::Initialize()
 	{
-		id = 0;
 		for(unsigned int i = 0 ; i < HistoryCount ; i++)
 		{
 			voltages[i] = 0.0;

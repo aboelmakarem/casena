@@ -3,7 +3,7 @@ import os
 import os.path
 import sys
 
-sources = []
+sources = ["Random.cpp","BLAS.cpp","Matrix.cpp"]
 
 compiler = "mpicxx"
 include_arg = ""
