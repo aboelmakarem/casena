@@ -19,8 +19,10 @@ namespace CASENA
 		virtual ~Component();
 		virtual Component& operator=(const Component& component);
 		void Reset();
+		virtual bool Read(const char* line);
 		void ID(const unsigned int& value);
 		unsigned int ID() const;
+		virtual unsigned int ClaimIDs(const unsigned int& start_id);
 		virtual void Equation(EZ::Math::Matrix& f) const = 0;
 		virtual void Gradients(EZ::Math::Matrix& A) const = 0;
 		

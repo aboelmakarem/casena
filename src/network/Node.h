@@ -10,28 +10,27 @@
 
 namespace CASENA
 {
-	class Branch;
 	class Node : public Component
 	{
 	public:
 		Node();
+		Node(const Node& node);
 		~Node();
+		Node& operator=(const Node& node);
 		void Reset();
 		double Voltage() const;
 		double PreviousVoltage() const;
 		void Voltage(const double& value);
-		void AddBranch(const Branch* branch);
+		void AddBranch(const unsigned int& branch_id);
 		unsigned int BranchCount() const;
-		const EZ::List<const Branch*>* Branches() const;
+		const EZ::List<unsigned int>* BranchIDs() const;
 		void Equation(EZ::Math::Matrix& f) const;
 		void Gradients(EZ::Math::Matrix& A) const;
 		
 	private:
-		Node(const Node& node);
-		Node& operator=(const Node& node);
 		void Initialize();
 		double voltages[HistoryCount];
-		EZ::List<const Branch*> branches;
+		EZ::List<unsigned int> branch_ids;
 	};
 }
 

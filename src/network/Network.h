@@ -7,6 +7,8 @@
 
 #include "Node.h"
 #include "Branch.h"
+#include "Array.h"
+#include "List.h"
 
 namespace CASENA
 {
@@ -17,8 +19,11 @@ namespace CASENA
 		static void ReleaseNetwork();
 		~Network();
 		void Reset();
+		bool Read(const char* filename);
 		static bool SteadyState();
 		static bool Transient();
+		Node* GetNode(const unsigned int& id) const;
+		Branch* GetBranch(const unsigned int& id) const;
 		
 	private:
 		static Network* network;
@@ -27,7 +32,10 @@ namespace CASENA
 		Network& operator=(const Network& network);
 		void Initialize();
 		static int analysis_type;
+		EZ::Array<Node*> nodes;
 		EZ::List<Component*> components;
+		unsigned int first_branch_id;
+		EZ::Array<Branch*> branches;
 	};
 }
 

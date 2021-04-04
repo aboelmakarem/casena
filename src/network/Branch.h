@@ -5,7 +5,8 @@
 #ifndef BRANCH_H_
 #define BRANCH_H_
 
-#include "Node.h"
+#include "Component.h"
+#include "String.h"
 
 namespace CASENA
 {
@@ -17,19 +18,27 @@ namespace CASENA
 		virtual ~Branch();
 		virtual Branch& operator=(const Branch& branch);
 		void Reset();
+		static bool IsBranchComponent(const char* line);
+		static unsigned int ReadMaxNodeID(const char* line);
+		bool Read(const char* line);
+		static Component* Create(const char* line);
 		double Current() const;
 		double PreviousCurrent() const;
 		void Current(const double& value);
-		void StartNode(const Node* node);
-		const Node* StartNode() const;
-		void EndNode(const Node* node);
-		const Node* EndNode() const;
+		void StartNodeID(const unsigned int& target_id);
+		unsigned int StartNodeID() const;
+		void EndNodeID(const unsigned int& target_id);
+		unsigned int EndNodeID() const;
 		
 	private:
 		void Initialize();
 		double currents[HistoryCount];
-		const Node* start;
-		const Node* end;
+		EZ::String name;
+		
+	protected:
+		virtual bool ReadProperties(const EZ::List<EZ::String*>* line_tokens);
+		unsigned int start_node_id;
+		unsigned int end_node_id;
 	};
 	
 	class IndSource : public Branch
@@ -46,6 +55,9 @@ namespace CASENA
 	private:
 		void Initialize();
 		double form;
+		
+	protected:
+		bool ReadProperties(const EZ::List<EZ::String*>* line_tokens);
 	};
 	
 	class IndVolSource : public IndSource
@@ -88,17 +100,20 @@ namespace CASENA
 		void Reset();
 		void Coefficient(const double& value);
 		double Coefficient() const;
-		void SourceStartNode(const Node* node);
-		const Node* SourceStartNode() const;
-		void SourceEndNode(const Node* node);
-		const Node* SourceEndNode() const;
+		void SourceStartNodeID(const unsigned int& id);
+		unsigned int SourceStartNodeID() const;
+		void SourceEndNodeID(const unsigned int& id);
+		unsigned int SourceEndNodeID() const;
 		double SourceVoltage() const;
 		
 	private:
 		void Initialize();
 		double coefficient;
-		const Node* source_start;
-		const Node* source_end;
+		
+	protected:
+		bool ReadProperties(const EZ::List<EZ::String*>* line_tokens);
+		unsigned int source_start_node_id;
+		unsigned int source_end_node_id;
 	};
 	
 	class VCVolSource : public VCSource
@@ -141,14 +156,17 @@ namespace CASENA
 		void Reset();
 		void Coefficient(const double& value);
 		double Coefficient() const;
-		void SourceBranch(const Branch* branch);
-		const Branch* SourceBranch() const;
+		void SourceBranchID(const unsigned int& id);
+		unsigned int SourceBranchID() const;
 		double SourceCurrent() const;
 		
 	private:
 		void Initialize();
 		double coefficient;
-		const Branch* source_branch;
+		
+	protected:
+		bool ReadProperties(const EZ::List<EZ::String*>* line_tokens);
+		unsigned int source_branch_id;
 	};
 	
 	class CCVolSource : public CCSource
@@ -181,6 +199,36 @@ namespace CASENA
 		void Initialize();
 	};
 	
+	class ShortBranch : public Branch
+	{
+	public:
+		ShortBranch();
+		ShortBranch(const ShortBranch& branch);
+		~ShortBranch();
+		ShortBranch& operator=(const ShortBranch& branch);
+		void Reset();
+		void Equation(EZ::Math::Matrix& f) const;
+		void Gradients(EZ::Math::Matrix& A) const;
+		
+	private:
+		void Initialize();
+	};
+	
+	class OpenBranch : public Branch
+	{
+	public:
+		OpenBranch();
+		OpenBranch(const OpenBranch& branch);
+		~OpenBranch();
+		OpenBranch& operator=(const OpenBranch& branch);
+		void Reset();
+		void Equation(EZ::Math::Matrix& f) const;
+		void Gradients(EZ::Math::Matrix& A) const;
+		
+	private:
+		void Initialize();
+	};
+	
 	class Resistor : public Branch
 	{
 	public:
@@ -197,6 +245,9 @@ namespace CASENA
 	private:
 		void Initialize();
 		double resistance;
+		
+	protected:
+		bool ReadProperties(const EZ::List<EZ::String*>* line_tokens);
 	};
 	
 	class Capacitor : public Branch
@@ -215,6 +266,9 @@ namespace CASENA
 	private:
 		void Initialize();
 		double capacitance;
+		
+	protected:
+		bool ReadProperties(const EZ::List<EZ::String*>* line_tokens);
 	};
 	
 	class Inductor : public Branch
@@ -233,6 +287,9 @@ namespace CASENA
 	private:
 		void Initialize();
 		double inductance;
+		
+	protected:
+		bool ReadProperties(const EZ::List<EZ::String*>* line_tokens);
 	};
 }
 
