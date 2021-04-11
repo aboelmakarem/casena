@@ -6,7 +6,6 @@
 #define BRANCH_H_
 
 #include "Component.h"
-#include "String.h"
 
 namespace CASENA
 {
@@ -29,14 +28,17 @@ namespace CASENA
 		unsigned int StartNodeID() const;
 		void EndNodeID(const unsigned int& target_id);
 		unsigned int EndNodeID() const;
+		void Equation(EZ::Math::Matrix& f) const;
+		void Gradients(EZ::Math::Matrix& A) const;
 		
 	private:
 		void Initialize();
 		double currents[HistoryCount];
-		EZ::String name;
 		
 	protected:
 		virtual bool ReadProperties(const EZ::List<EZ::String*>* line_tokens);
+		virtual void BranchEquation(EZ::Math::Matrix& f) const = 0;
+		virtual void BranchGradients(EZ::Math::Matrix& A) const = 0;
 		unsigned int start_node_id;
 		unsigned int end_node_id;
 	};
@@ -54,10 +56,8 @@ namespace CASENA
 		
 	private:
 		void Initialize();
-		double form;
-		
-	protected:
 		bool ReadProperties(const EZ::List<EZ::String*>* line_tokens);
+		double form;
 	};
 	
 	class IndVolSource : public IndSource
@@ -68,11 +68,12 @@ namespace CASENA
 		~IndVolSource();
 		IndVolSource& operator=(const IndVolSource& source);
 		void Reset();
-		void Equation(EZ::Math::Matrix& f) const;
-		void Gradients(EZ::Math::Matrix& A) const;
+		void Print() const;
 		
 	private:
 		void Initialize();
+		void BranchEquation(EZ::Math::Matrix& f) const;
+		void BranchGradients(EZ::Math::Matrix& A) const;
 	};
 	
 	class IndCurrSource : public IndSource
@@ -83,11 +84,12 @@ namespace CASENA
 		~IndCurrSource();
 		IndCurrSource& operator=(const IndCurrSource& resistor);
 		void Reset();
-		void Equation(EZ::Math::Matrix& f) const;
-		void Gradients(EZ::Math::Matrix& A) const;
+		void Print() const;
 		
 	private:
 		void Initialize();
+		void BranchEquation(EZ::Math::Matrix& f) const;
+		void BranchGradients(EZ::Math::Matrix& A) const;
 	};
 	
 	class VCSource : public Branch
@@ -108,10 +110,10 @@ namespace CASENA
 		
 	private:
 		void Initialize();
+		bool ReadProperties(const EZ::List<EZ::String*>* line_tokens);
 		double coefficient;
 		
 	protected:
-		bool ReadProperties(const EZ::List<EZ::String*>* line_tokens);
 		unsigned int source_start_node_id;
 		unsigned int source_end_node_id;
 	};
@@ -124,11 +126,12 @@ namespace CASENA
 		~VCVolSource();
 		VCVolSource& operator=(const VCVolSource& source);
 		void Reset();
-		void Equation(EZ::Math::Matrix& f) const;
-		void Gradients(EZ::Math::Matrix& A) const;
+		void Print() const;
 		
 	private:
 		void Initialize();
+		void BranchEquation(EZ::Math::Matrix& f) const;
+		void BranchGradients(EZ::Math::Matrix& A) const;
 	};
 	
 	class VCCurrSource : public VCSource
@@ -139,11 +142,12 @@ namespace CASENA
 		~VCCurrSource();
 		VCCurrSource& operator=(const VCCurrSource& source);
 		void Reset();
-		void Equation(EZ::Math::Matrix& f) const;
-		void Gradients(EZ::Math::Matrix& A) const;
+		void Print() const;
 		
 	private:
 		void Initialize();
+		void BranchEquation(EZ::Math::Matrix& f) const;
+		void BranchGradients(EZ::Math::Matrix& A) const;
 	};
 	
 	class CCSource : public Branch
@@ -162,10 +166,10 @@ namespace CASENA
 		
 	private:
 		void Initialize();
+		bool ReadProperties(const EZ::List<EZ::String*>* line_tokens);
 		double coefficient;
 		
 	protected:
-		bool ReadProperties(const EZ::List<EZ::String*>* line_tokens);
 		unsigned int source_branch_id;
 	};
 	
@@ -177,11 +181,12 @@ namespace CASENA
 		~CCVolSource();
 		CCVolSource& operator=(const CCVolSource& source);
 		void Reset();
-		void Equation(EZ::Math::Matrix& f) const;
-		void Gradients(EZ::Math::Matrix& A) const;
+		void Print() const;
 		
 	private:
 		void Initialize();
+		void BranchEquation(EZ::Math::Matrix& f) const;
+		void BranchGradients(EZ::Math::Matrix& A) const;
 	};
 	
 	class CCCurrSource : public CCSource
@@ -192,11 +197,12 @@ namespace CASENA
 		~CCCurrSource();
 		CCCurrSource& operator=(const CCCurrSource& source);
 		void Reset();
-		void Equation(EZ::Math::Matrix& f) const;
-		void Gradients(EZ::Math::Matrix& A) const;
+		void Print() const;
 		
 	private:
 		void Initialize();
+		void BranchEquation(EZ::Math::Matrix& f) const;
+		void BranchGradients(EZ::Math::Matrix& A) const;
 	};
 	
 	class ShortBranch : public Branch
@@ -207,11 +213,12 @@ namespace CASENA
 		~ShortBranch();
 		ShortBranch& operator=(const ShortBranch& branch);
 		void Reset();
-		void Equation(EZ::Math::Matrix& f) const;
-		void Gradients(EZ::Math::Matrix& A) const;
+		void Print() const;
 		
 	private:
 		void Initialize();
+		void BranchEquation(EZ::Math::Matrix& f) const;
+		void BranchGradients(EZ::Math::Matrix& A) const;
 	};
 	
 	class OpenBranch : public Branch
@@ -222,11 +229,12 @@ namespace CASENA
 		~OpenBranch();
 		OpenBranch& operator=(const OpenBranch& branch);
 		void Reset();
-		void Equation(EZ::Math::Matrix& f) const;
-		void Gradients(EZ::Math::Matrix& A) const;
+		void Print() const;
 		
 	private:
 		void Initialize();
+		void BranchEquation(EZ::Math::Matrix& f) const;
+		void BranchGradients(EZ::Math::Matrix& A) const;
 	};
 	
 	class Resistor : public Branch
@@ -239,15 +247,14 @@ namespace CASENA
 		void Reset();
 		void Resistance(const double& value);
 		double Resistance() const;
-		void Equation(EZ::Math::Matrix& f) const;
-		void Gradients(EZ::Math::Matrix& A) const;
+		void Print() const;
 		
 	private:
 		void Initialize();
-		double resistance;
-		
-	protected:
 		bool ReadProperties(const EZ::List<EZ::String*>* line_tokens);
+		void BranchEquation(EZ::Math::Matrix& f) const;
+		void BranchGradients(EZ::Math::Matrix& A) const;
+		double resistance;
 	};
 	
 	class Capacitor : public Branch
@@ -260,15 +267,14 @@ namespace CASENA
 		void Reset();
 		void Capacitance(const double& value);
 		double Capacitance() const;
-		void Equation(EZ::Math::Matrix& f) const;
-		void Gradients(EZ::Math::Matrix& A) const;
+		void Print() const;
 		
 	private:
 		void Initialize();
-		double capacitance;
-		
-	protected:
 		bool ReadProperties(const EZ::List<EZ::String*>* line_tokens);
+		void BranchEquation(EZ::Math::Matrix& f) const;
+		void BranchGradients(EZ::Math::Matrix& A) const;
+		double capacitance;
 	};
 	
 	class Inductor : public Branch
@@ -281,15 +287,14 @@ namespace CASENA
 		void Reset();
 		void Inductance(const double& value);
 		double Inductance() const;
-		void Equation(EZ::Math::Matrix& f) const;
-		void Gradients(EZ::Math::Matrix& A) const;
+		void Print() const;
 		
 	private:
 		void Initialize();
-		double inductance;
-		
-	protected:
 		bool ReadProperties(const EZ::List<EZ::String*>* line_tokens);
+		void BranchEquation(EZ::Math::Matrix& f) const;
+		void BranchGradients(EZ::Math::Matrix& A) const;
+		double inductance;
 	};
 }
 

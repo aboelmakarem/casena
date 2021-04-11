@@ -3,7 +3,7 @@ import os
 import os.path
 import sys
 
-common_sources = ["Component.cpp","Node.cpp","Branch.cpp"]
+common_sources = ["Component.cpp","Node.cpp","Branch.cpp","Transistor.cpp"]
 solver_sources = ["Network.cpp"]
 
 compiler = "mpicxx"

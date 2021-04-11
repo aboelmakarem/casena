@@ -12,6 +12,7 @@ namespace CASENA
 	Component& Component::operator=(const Component& component)
 	{
 		id = component.id;
+		name = component.name;
 		return *this;
 	}
 	void Component::Reset(){Initialize();}
@@ -23,12 +24,18 @@ namespace CASENA
 	}
 	void Component::ID(const unsigned int& value){id = value;}
 	unsigned int Component::ID() const{return id;}
+	void Component::Name(const EZ::String& target_name){name = target_name;}
+	const EZ::String& Component::Name() const{return name;}
 	unsigned int Component::ClaimIDs(const unsigned int& start_id)
 	{
 		// claim only 1 ID
 		id = start_id;
 		return id + 1;
 	}
-	void Component::Initialize(){id = 0;}
+	void Component::Initialize()
+	{
+		id = 0;
+		name.Reset();
+	}
 }
 

@@ -49,7 +49,6 @@ namespace CASENA
 		unsigned int max_node_id = 0;
 		unsigned int node_id = 0;
 		unsigned int branch_count = 0;
-		unsigned int transistor_count = 0;
 		while(!feof(file))
 		{
 			if(!EZ::IO::ReadLine(line,2048,file))		continue;
@@ -62,23 +61,24 @@ namespace CASENA
 			else if(Transistor::IsTransistor(line))
 			{
 				node_id = Transistor::ReadMaxNodeID(line);
-				transistor_count++;
+				branch_count += Transistor::BranchCount(line);
 			}
 			if(node_id > max_node_id)		max_node_id = node_id;
 		}
 		// create node array, node IDs are zero based
 		nodes.Allocate(max_node_id + 1);
-		unsigned int id = 0;
 		for(unsigned int i = 0 ; i <= max_node_id ; i++)
 		{
 			nodes[i] = new Node;
-			id = nodes[i]->ClaimIDs(id);
+			nodes[i]->ID(i);
 		}
+		unsigned int id = max_node_id + 1;
 		first_branch_id = id;
 		// read components
 		fseek(file,0,SEEK_SET);
 		Component* component = 0;
-		unsigned int start_id;
+		unsigned int start_id = 0;
+		branches.Allocate(branch_count);
 		while(!feof(file))
 		{
 			if(!EZ::IO::ReadLine(line,2048,file))		continue;
@@ -95,6 +95,7 @@ namespace CASENA
 				}
 				id = component->ClaimIDs(id);
 				branches[start_id] = (Branch*)component;
+				components.PushBack(component);
 			}
 			else if(Transistor::IsTransistor(line))
 			{
@@ -111,6 +112,7 @@ namespace CASENA
 				{
 					branches[i] = 0;
 				}
+				components.PushBack(component);
 			}
 		}
 		fclose(file);
@@ -120,6 +122,14 @@ namespace CASENA
 	bool Network::Transient(){return (analysis_type == 2);}
 	Node* Network::GetNode(const unsigned int& id) const{return nodes[id];}
 	Branch* Network::GetBranch(const unsigned int& id) const{return branches[id - first_branch_id];}
+	void Network::Print() const
+	{
+		printf("network:\n");
+		for(EZ::ListItem<Component*>* item = components.Start() ; item != 0 ; item = item->Next())
+		{
+			item->Data()->Print();
+		}
+	}
 	void Network::Initialize()
 	{
 		analysis_type = 0;
@@ -143,6 +153,7 @@ int main(int argc,char** argv)
 	{
 		printf("error: failed to read input file %s\n",argv[1]);
 	}
+	network->Print();
 	CASENA::Network::ReleaseNetwork();
 	return 0;
 }

@@ -16,13 +16,9 @@ namespace CASENA
 	Branch& Branch::operator=(const Branch& branch)
 	{
 		Component::operator=(branch);
-		for(unsigned int i = 0 ; i < HistoryCount ; i++)
-		{
-			currents[i] = branch.currents[i];
-		}
+		memcpy(currents,branch.currents,HistoryCount*sizeof(double));
 		start_node_id = branch.start_node_id;
 		end_node_id = branch.end_node_id;
-		name = branch.name;
 		return *this;
 	}
 	void Branch::Reset()
@@ -100,7 +96,7 @@ namespace CASENA
 		tokens.PopFront();
 		// read component name
 		token = tokens.Start();
-		name = *(token->Data());
+		Name(*(token->Data()));
 		delete token->Data();
 		tokens.PopFront();
 		// read node IDs
@@ -112,20 +108,11 @@ namespace CASENA
 		end_node_id = atoi((*(token->Data()))());
 		delete token->Data();
 		tokens.PopFront();
-		// add branch to end nodes
-		Network* network = Network::GetNetwork();
-		Node* start_node = network->GetNode(start_node_id);
-		Node* end_node = network->GetNode(end_node_id);
-		if(start_node == 0)		return false;
-		if(end_node == 0)		return false;
-		unsigned int branch_id = ID();
-		start_node->AddBranch(branch_id);
-		end_node->AddBranch(branch_id);
 		// read the rest of the string and pass it to properties reader
 		bool read_properties = ReadProperties(&tokens);
 		if(!read_properties)
 		{
-			printf("error: incorrect definition for branch %s\n",name());
+			printf("error: incorrect definition for branch %s\n",Name()());
 		}
 		for(EZ::ListItem<EZ::String*>* item = tokens.Start() ; item != 0 ; item = item->Next())
 		{
@@ -148,18 +135,29 @@ namespace CASENA
 	unsigned int Branch::StartNodeID() const{return start_node_id;}
 	void Branch::EndNodeID(const unsigned int& target_id){end_node_id = target_id;}
 	unsigned int Branch::EndNodeID() const{return end_node_id;}
+	void Branch::Equation(EZ::Math::Matrix& f) const
+	{
+		// write the end nodes current equations
+		f(start_node_id,0,f(start_node_id,0) + currents[0]);
+		f(end_node_id,0,f(end_node_id,0) - currents[0]);
+		BranchEquation(f);
+	}
+	void Branch::Gradients(EZ::Math::Matrix& A) const
+	{
+		// write the end nodes current equations gradients
+		unsigned int branch_id = ID();
+		A(start_node_id,branch_id,1.0);
+		A(end_node_id,branch_id,-1.0);
+		BranchGradients(A);
+	}
 	void Branch::Initialize()
 	{
-		for(unsigned int i = 0 ; i < HistoryCount ; i++)
-		{
-			currents[i] = 0.0;
-		}
+		memset(currents,0,HistoryCount*sizeof(double));
 		start_node_id = 0;
 		end_node_id = 0;
-		name.Reset();
 	}
 	bool Branch::ReadProperties(const EZ::List<EZ::String*>* line_tokens){return (line_tokens->Size() == 0);}
-	
+		
 	IndSource::IndSource(){Initialize();}
 	IndSource::IndSource(const IndSource& source) : Branch(source){*this = source;}
 	IndSource::~IndSource(){Reset();}
@@ -197,19 +195,23 @@ namespace CASENA
 		Initialize();
 		IndSource::Reset();
 	}
-	void IndVolSource::Equation(EZ::Math::Matrix& f) const
+	void IndVolSource::Initialize(){}
+	void IndVolSource::BranchEquation(EZ::Math::Matrix& f) const
 	{
 		// voltage source equation is v_end - v_start - v_source = 0
 		Network* network = Network::GetNetwork();
 		f(ID(),0,network->GetNode(end_node_id)->Voltage() - network->GetNode(start_node_id)->Voltage() - Form());
 	}
-	void IndVolSource::Gradients(EZ::Math::Matrix& A) const
+	void IndVolSource::BranchGradients(EZ::Math::Matrix& A) const
 	{
 		unsigned int branch_id = ID();
 		A(branch_id,start_node_id,-1.0);
 		A(branch_id,end_node_id,1.0);
 	}
-	void IndVolSource::Initialize(){}
+	void IndVolSource::Print() const
+	{
+		printf("voltage source %s: %u --> %u : voltage = %e\n",Name()(),start_node_id,end_node_id,Form());
+	}
 	
 	IndCurrSource::IndCurrSource(){Initialize();}
 	IndCurrSource::IndCurrSource(const IndCurrSource& source) : IndSource(source){*this = source;}
@@ -224,17 +226,21 @@ namespace CASENA
 		Initialize();
 		IndSource::Reset();
 	}
-	void IndCurrSource::Equation(EZ::Math::Matrix& f) const
+	void IndCurrSource::Initialize(){}
+	void IndCurrSource::BranchEquation(EZ::Math::Matrix& f) const
 	{
 		// current source equation is i_branch - i_source = 0
 		f(ID(),0,Current() - Form());
 	}
-	void IndCurrSource::Gradients(EZ::Math::Matrix& A) const
+	void IndCurrSource::BranchGradients(EZ::Math::Matrix& A) const
 	{
 		unsigned int branch_id = ID();
 		A(branch_id,branch_id,1.0);
 	}
-	void IndCurrSource::Initialize(){}
+	void IndCurrSource::Print() const
+	{
+		printf("current source %s: %u --> %u : current = %e\n",Name()(),start_node_id,end_node_id,Form());
+	}
 	
 	VCSource::VCSource(){Initialize();}
 	VCSource::VCSource(const VCSource& source) : Branch(source){*this = source;}
@@ -292,14 +298,15 @@ namespace CASENA
 		return *this;
 	}
 	void VCVolSource::Reset(){VCSource::Reset();}
-	void VCVolSource::Equation(EZ::Math::Matrix& f) const
+	void VCVolSource::Initialize(){}
+	void VCVolSource::BranchEquation(EZ::Math::Matrix& f) const
 	{
 		// voltage controlled voltage source equation is
 		// v_end - v_start - coeff*(v_source_end - v_source_start) = 0
 		Network* network = Network::GetNetwork();
 		f(ID(),0,network->GetNode(end_node_id)->Voltage() - network->GetNode(start_node_id)->Voltage() - Coefficient()*SourceVoltage());
 	}
-	void VCVolSource::Gradients(EZ::Math::Matrix& A) const
+	void VCVolSource::BranchGradients(EZ::Math::Matrix& A) const
 	{
 		unsigned int branch_id = ID();
 		double source_coefficient = Coefficient();
@@ -308,7 +315,12 @@ namespace CASENA
 		A(branch_id,source_start_node_id,source_coefficient);
 		A(branch_id,source_end_node_id,-source_coefficient);
 	}
-	void VCVolSource::Initialize(){}
+	void VCVolSource::Print() const
+	{
+		printf("voltage controlled voltage source %s: %u --> %u : source voltage %u --> %u : coefficient = %e\n",
+		Name()(),start_node_id,end_node_id,source_start_node_id,source_end_node_id,
+		Coefficient());
+	}
 	
 	VCCurrSource::VCCurrSource(){Initialize();}
 	VCCurrSource::VCCurrSource(const VCCurrSource& source) : VCSource (source) {*this = source;}
@@ -319,13 +331,14 @@ namespace CASENA
 		return *this;
 	}
 	void VCCurrSource::Reset(){VCSource::Reset();}
-	void VCCurrSource::Equation(EZ::Math::Matrix& f) const
+	void VCCurrSource::Initialize(){}
+	void VCCurrSource::BranchEquation(EZ::Math::Matrix& f) const
 	{
 		// voltage controlled current source equation is
 		// i_branch - coeff*(v_source_end - v_source_start) = 0
 		f(ID(),0,Current() - Coefficient()*SourceVoltage());
 	}
-	void VCCurrSource::Gradients(EZ::Math::Matrix& A) const
+	void VCCurrSource::BranchGradients(EZ::Math::Matrix& A) const
 	{
 		unsigned int branch_id = ID();
 		double source_coefficient = Coefficient();
@@ -333,7 +346,12 @@ namespace CASENA
 		A(branch_id,source_start_node_id,source_coefficient);
 		A(branch_id,source_end_node_id,-source_coefficient);
 	}
-	void VCCurrSource::Initialize(){}
+	void VCCurrSource::Print() const
+	{
+		printf("voltage controlled current source %s: %u --> %u : source voltage %u --> %u : coefficient = %e\n",
+		Name()(),start_node_id,end_node_id,source_start_node_id,source_end_node_id,
+		Coefficient());
+	}
 	
 	CCSource::CCSource(){Initialize();}
 	CCSource::CCSource(const CCSource& source) : Branch(source){*this = source;}
@@ -379,14 +397,15 @@ namespace CASENA
 		return *this;
 	}
 	void CCVolSource::Reset(){CCSource::Reset();}
-	void CCVolSource::Equation(EZ::Math::Matrix& f) const
+	void CCVolSource::Initialize(){}
+	void CCVolSource::BranchEquation(EZ::Math::Matrix& f) const
 	{
 		// current controlled voltage source equation is
 		// v_end - v_start - coeff*i_source = 0
 		Network* network = Network::GetNetwork();
 		f(ID(),0,network->GetNode(end_node_id)->Voltage() - network->GetNode(start_node_id)->Voltage() - Coefficient()*SourceCurrent());
 	}
-	void CCVolSource::Gradients(EZ::Math::Matrix& A) const
+	void CCVolSource::BranchGradients(EZ::Math::Matrix& A) const
 	{
 		unsigned int branch_id = ID();
 		double source_coefficient = Coefficient();
@@ -394,7 +413,10 @@ namespace CASENA
 		A(branch_id,end_node_id,1.0);
 		A(branch_id,source_branch_id,-source_coefficient);
 	}
-	void CCVolSource::Initialize(){}
+	void CCVolSource::Print() const
+	{
+		printf("current controlled voltage source %s: %u --> %u\n",Name()(),start_node_id,end_node_id);
+	}
 	
 	CCCurrSource::CCCurrSource(){Initialize();}
 	CCCurrSource::CCCurrSource(const CCCurrSource& source): CCSource(source){*this = source;}
@@ -405,19 +427,23 @@ namespace CASENA
 		return *this;
 	}
 	void CCCurrSource::Reset(){CCSource::Reset();}
-	void CCCurrSource::Equation(EZ::Math::Matrix& f) const
+	void CCCurrSource::Initialize(){}
+	void CCCurrSource::BranchEquation(EZ::Math::Matrix& f) const
 	{
 		// current controlled current source equation is
 		// i_branch - coeff*i_source = 0
 		f(ID(),0,Current() - Coefficient()*SourceCurrent());
 	}
-	void CCCurrSource::Gradients(EZ::Math::Matrix& A) const
+	void CCCurrSource::BranchGradients(EZ::Math::Matrix& A) const
 	{
 		unsigned int branch_id = ID();
 		A(branch_id,branch_id,1.0);
 		A(branch_id,source_branch_id,-Coefficient());
 	}
-	void CCCurrSource::Initialize(){}
+	void CCCurrSource::Print() const
+	{
+		printf("current controlled current source %s: %u --> %u\n",Name()(),start_node_id,end_node_id);
+	}
 	
 	ShortBranch::ShortBranch(){Initialize();}
 	ShortBranch::ShortBranch(const ShortBranch& branch) : Branch(branch){*this = branch;}
@@ -432,19 +458,23 @@ namespace CASENA
 		Initialize();
 		Branch::Reset();
 	}
-	void ShortBranch::Equation(EZ::Math::Matrix& f) const
+	void ShortBranch::Initialize(){}
+	void ShortBranch::BranchEquation(EZ::Math::Matrix& f) const
 	{
 		// short circuit equation is v_end - v_start = 0
 		Network* network = Network::GetNetwork();
 		f(ID(),0,network->GetNode(end_node_id)->Voltage() - network->GetNode(start_node_id)->Voltage());
 	}
-	void ShortBranch::Gradients(EZ::Math::Matrix& A) const
+	void ShortBranch::BranchGradients(EZ::Math::Matrix& A) const
 	{
 		unsigned int branch_id = ID();
 		A(branch_id,start_node_id,-1.0);
 		A(branch_id,end_node_id,1.0);
 	}
-	void ShortBranch::Initialize(){}
+	void ShortBranch::Print() const
+	{
+		printf("short branch %s: %u --> %u\n",Name()(),start_node_id,end_node_id);
+	}
 	
 	OpenBranch::OpenBranch(){Initialize();}
 	OpenBranch::OpenBranch(const OpenBranch& branch) : Branch(branch){*this = branch;}
@@ -459,17 +489,21 @@ namespace CASENA
 		Initialize();
 		Branch::Reset();
 	}
-	void OpenBranch::Equation(EZ::Math::Matrix& f) const
+	void OpenBranch::Initialize(){}
+	void OpenBranch::BranchEquation(EZ::Math::Matrix& f) const
 	{
 		// open circuit equation is i_branch = 0
 		f(ID(),0,Current());
 	}
-	void OpenBranch::Gradients(EZ::Math::Matrix& A) const
+	void OpenBranch::BranchGradients(EZ::Math::Matrix& A) const
 	{
 		unsigned int branch_id = ID();
 		A(branch_id,branch_id,1.0);
 	}
-	void OpenBranch::Initialize(){}
+	void OpenBranch::Print() const
+	{
+		printf("open branch %s: %u --> %u\n",Name()(),start_node_id,end_node_id);
+	}
 	
 	Resistor::Resistor(){Initialize();}
 	Resistor::Resistor(const Resistor& resistor) : Branch(resistor){*this = resistor;}
@@ -487,26 +521,30 @@ namespace CASENA
 	}
 	void Resistor::Resistance(const double& value){resistance = value;}
 	double Resistor::Resistance() const{return resistance;}
-	void Resistor::Equation(EZ::Math::Matrix& f) const
-	{
-		// resistor equation is
-		// v_end - v_start - resistance*i_branch = 0
-		Network* network = Network::GetNetwork();
-		f(ID(),0,network->GetNode(end_node_id)->Voltage() - network->GetNode(start_node_id)->Voltage() - resistance*Current());
-	}
-	void Resistor::Gradients(EZ::Math::Matrix& A) const
-	{
-		unsigned int branch_id = ID();
-		A(branch_id,start_node_id,-1.0);
-		A(branch_id,end_node_id,1.0);
-		A(branch_id,branch_id,-resistance);
-	}
 	void Resistor::Initialize(){resistance = 0.0;}
 	bool Resistor::ReadProperties(const EZ::List<EZ::String*>* line_tokens)
 	{
 		if(line_tokens->Size() != 1)		return false;
 		resistance = atof((*(line_tokens->Front()))());
 		return true;
+	}
+	void Resistor::BranchEquation(EZ::Math::Matrix& f) const
+	{
+		// resistor equation is
+		// v_end - v_start - resistance*i_branch = 0
+		Network* network = Network::GetNetwork();
+		f(ID(),0,network->GetNode(end_node_id)->Voltage() - network->GetNode(start_node_id)->Voltage() - resistance*Current());
+	}
+	void Resistor::BranchGradients(EZ::Math::Matrix& A) const
+	{
+		unsigned int branch_id = ID();
+		A(branch_id,start_node_id,-1.0);
+		A(branch_id,end_node_id,1.0);
+		A(branch_id,branch_id,-resistance);
+	}
+	void Resistor::Print() const
+	{
+		printf("resistor %s: %u --> %u : resistance = %e\n",Name()(),start_node_id,end_node_id,resistance);
 	}
 	
 	Capacitor::Capacitor(){Initialize();}
@@ -525,7 +563,14 @@ namespace CASENA
 	}
 	void Capacitor::Capacitance(const double& value){capacitance = value;}
 	double Capacitor::Capacitance() const{return capacitance;}
-	void Capacitor::Equation(EZ::Math::Matrix& f) const
+	void Capacitor::Initialize(){capacitance = 0.0;}
+	bool Capacitor::ReadProperties(const EZ::List<EZ::String*>* line_tokens)
+	{
+		if(line_tokens->Size() != 1)		return false;
+		capacitance = atof((*(line_tokens->Front()))());
+		return true;
+	}
+	void Capacitor::BranchEquation(EZ::Math::Matrix& f) const
 	{
 		if(Network::SteadyState())
 		{
@@ -538,7 +583,7 @@ namespace CASENA
 			
 		}
 	}
-	void Capacitor::Gradients(EZ::Math::Matrix& A) const
+	void Capacitor::BranchGradients(EZ::Math::Matrix& A) const
 	{
 		if(Network::SteadyState())
 		{
@@ -550,12 +595,9 @@ namespace CASENA
 			
 		}
 	}
-	void Capacitor::Initialize(){capacitance = 0.0;}
-	bool Capacitor::ReadProperties(const EZ::List<EZ::String*>* line_tokens)
+	void Capacitor::Print() const
 	{
-		if(line_tokens->Size() != 1)		return false;
-		capacitance = atof((*(line_tokens->Front()))());
-		return true;
+		printf("capacitor %s: %u --> %u : capacitance = %e\n",Name()(),start_node_id,end_node_id,capacitance);
 	}
 	
 	Inductor::Inductor(){Initialize();}
@@ -574,7 +616,14 @@ namespace CASENA
 	}
 	void Inductor::Inductance(const double& value){inductance = value;}
 	double Inductor::Inductance() const{return inductance;}
-	void Inductor::Equation(EZ::Math::Matrix& f) const
+	void Inductor::Initialize(){inductance = 0.0;}
+	bool Inductor::ReadProperties(const EZ::List<EZ::String*>* line_tokens)
+	{
+		if(line_tokens->Size() != 1)		return false;
+		inductance = atof((*(line_tokens->Front()))());
+		return true;
+	}
+	void Inductor::BranchEquation(EZ::Math::Matrix& f) const
 	{
 		if(Network::SteadyState())
 		{
@@ -588,7 +637,7 @@ namespace CASENA
 			
 		}
 	}
-	void Inductor::Gradients(EZ::Math::Matrix& A) const
+	void Inductor::BranchGradients(EZ::Math::Matrix& A) const
 	{
 		if(Network::SteadyState())
 		{
@@ -601,12 +650,9 @@ namespace CASENA
 			
 		}
 	}
-	void Inductor::Initialize(){inductance = 0.0;}
-	bool Inductor::ReadProperties(const EZ::List<EZ::String*>* line_tokens)
+	void Inductor::Print() const
 	{
-		if(line_tokens->Size() != 1)		return false;
-		inductance = atof((*(line_tokens->Front()))());
-		return true;
+		printf("inductor %s: %u --> %u : inductance = %e\n",Name()(),start_node_id,end_node_id,inductance);
 	}
 }
 

@@ -24,6 +24,7 @@ namespace CASENA
 		static bool Transient();
 		Node* GetNode(const unsigned int& id) const;
 		Branch* GetBranch(const unsigned int& id) const;
+		void Print() const;
 		
 	private:
 		static Network* network;

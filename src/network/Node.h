@@ -6,11 +6,10 @@
 #define NODE_H_
 
 #include "Component.h"
-#include "List.h"
 
 namespace CASENA
 {
-	class Node : public Component
+	class Node
 	{
 	public:
 		Node();
@@ -18,19 +17,16 @@ namespace CASENA
 		~Node();
 		Node& operator=(const Node& node);
 		void Reset();
+		void ID(const unsigned int& value);
+		unsigned int ID() const;
 		double Voltage() const;
 		double PreviousVoltage() const;
 		void Voltage(const double& value);
-		void AddBranch(const unsigned int& branch_id);
-		unsigned int BranchCount() const;
-		const EZ::List<unsigned int>* BranchIDs() const;
-		void Equation(EZ::Math::Matrix& f) const;
-		void Gradients(EZ::Math::Matrix& A) const;
 		
 	private:
 		void Initialize();
+		unsigned int id;
 		double voltages[HistoryCount];
-		EZ::List<unsigned int> branch_ids;
 	};
 }
 
