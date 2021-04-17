@@ -94,7 +94,7 @@ namespace CASENA
 					continue;
 				}
 				id = component->ClaimIDs(id);
-				branches[start_id] = (Branch*)component;
+				branches[start_id - first_branch_id] = (Branch*)component;
 				components.PushBack(component);
 			}
 			else if(Transistor::IsTransistor(line))
@@ -110,7 +110,7 @@ namespace CASENA
 				// claimed by the transistor
 				for(unsigned int i = start_id ; i < id ; i++)
 				{
-					branches[i] = 0;
+					branches[i - first_branch_id] = 0;
 				}
 				components.PushBack(component);
 			}
@@ -129,6 +129,34 @@ namespace CASENA
 		{
 			item->Data()->Print();
 		}
+	}
+	void Network::Run() const
+	{
+		unsigned int node_count = nodes.Size();
+		unsigned int branch_count = branches.Size();
+		unsigned int n = node_count + branch_count;
+		EZ::Math::Matrix full_A(n,n);
+		EZ::Math::Matrix full_f(n,1);
+		for(EZ::ListItem<Component*>* item = components.Start() ; item != 0 ; item = item->Next())
+		{
+			item->Data()->Equation(full_f);
+			item->Data()->Gradients(full_A);
+		}
+		full_f.Print();
+		full_A.Print();
+		// always ground node 0 (set its voltage to 0)
+		EZ::Math::Matrix A(n - 1,n - 1);
+		EZ::Math::Matrix f(n - 1,1);
+		for(unsigned int i = 1 ; i < n ; i++)
+		{
+			for(unsigned int j = 1 ; j < n ; j++)
+			{
+				A(i - 1,j - 1,full_A(i,j));
+			}
+			f(i - 1,0,full_f(i,0));
+		}
+		EZ::Math::Matrix x = A.Solve(f)*(-1.0);
+		x.Print();
 	}
 	void Network::Initialize()
 	{
@@ -154,6 +182,7 @@ int main(int argc,char** argv)
 		printf("error: failed to read input file %s\n",argv[1]);
 	}
 	network->Print();
+	network->Run();
 	CASENA::Network::ReleaseNetwork();
 	return 0;
 }
