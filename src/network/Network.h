@@ -9,6 +9,7 @@
 #include "Branch.h"
 #include "Array.h"
 #include "List.h"
+#include "Trie.h"
 
 namespace CASENA
 {
@@ -24,8 +25,10 @@ namespace CASENA
 		static bool Transient();
 		Node* GetNode(const unsigned int& id) const;
 		Branch* GetBranch(const unsigned int& id) const;
+		Branch* GetBranch(const EZ::String& name) const;
 		void Print() const;
 		void Run() const;
+		void PrintState() const;
 		
 	private:
 		static Network* network;
@@ -33,11 +36,13 @@ namespace CASENA
 		Network(const Network& network);
 		Network& operator=(const Network& network);
 		void Initialize();
+		void Update(const EZ::Math::Matrix& x) const;
 		static int analysis_type;
 		EZ::Array<Node*> nodes;
 		EZ::List<Component*> components;
 		unsigned int first_branch_id;
 		EZ::Array<Branch*> branches;
+		EZ::TrieNode<unsigned int> branch_id_trie;
 	};
 }
 

@@ -197,6 +197,10 @@ namespace CASENA
 			
 		}
 	}
+	void MOSFET::Update(const EZ::Math::Matrix& x,const unsigned int& id_offset)
+	{
+		
+	}
 	void MOSFET::Print() const
 	{
 		printf("mosfet %s\n",Name()());

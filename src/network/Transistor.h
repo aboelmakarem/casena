@@ -43,6 +43,7 @@ namespace CASENA
 		unsigned int ClaimIDs(const unsigned int& start_id);
 		void Equation(EZ::Math::Matrix& f) const;
 		void Gradients(EZ::Math::Matrix& A) const;
+		void Update(const EZ::Math::Matrix& x,const unsigned int& id_offset);
 		void Print() const;
 		
 	private:
@@ -78,6 +79,7 @@ namespace CASENA
 		unsigned int ClaimIDs(const unsigned int& start_id);
 		void Equation(EZ::Math::Matrix& f) const;
 		void Gradients(EZ::Math::Matrix& A) const;
+		void Update(const EZ::Math::Matrix& x,const unsigned int& id_offset);
 		void Print() const;
 		
 	private:

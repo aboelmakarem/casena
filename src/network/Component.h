@@ -28,6 +28,7 @@ namespace CASENA
 		virtual unsigned int ClaimIDs(const unsigned int& start_id);
 		virtual void Equation(EZ::Math::Matrix& f) const = 0;
 		virtual void Gradients(EZ::Math::Matrix& A) const = 0;
+		virtual void Update(const EZ::Math::Matrix& x,const unsigned int& id_offset) = 0;
 		virtual void Print() const = 0;
 		
 	private:

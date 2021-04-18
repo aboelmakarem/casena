@@ -30,6 +30,7 @@ namespace CASENA
 		unsigned int EndNodeID() const;
 		void Equation(EZ::Math::Matrix& f) const;
 		void Gradients(EZ::Math::Matrix& A) const;
+		void Update(const EZ::Math::Matrix& x,const unsigned int& id_offset);
 		
 	private:
 		void Initialize();
@@ -160,8 +161,8 @@ namespace CASENA
 		void Reset();
 		void Coefficient(const double& value);
 		double Coefficient() const;
-		void SourceBranchID(const unsigned int& id);
-		unsigned int SourceBranchID() const;
+		void SourceBranchName(const EZ::String& target_name);
+		const EZ::String& SourceBranchName() const;
 		double SourceCurrent() const;
 		
 	private:
@@ -170,7 +171,7 @@ namespace CASENA
 		double coefficient;
 		
 	protected:
-		unsigned int source_branch_id;
+		EZ::String source_branch_name;
 	};
 	
 	class CCVolSource : public CCSource
