@@ -6,6 +6,7 @@
 #include "Network.h"
 #include "Transistor.h"
 #include "InputOutput.h"
+#include "math.h"
 
 namespace CASENA
 {
@@ -157,10 +158,11 @@ namespace CASENA
 		{
 			x(i - 1,0,0.0);
 		}
-		double tolerance = 1.0e-12;
+		double tolerance = 5.0e-4;
 		double error = 100.0*tolerance;
 		unsigned int iteration = 0;
 		Component* component = 0;
+		double under_relaxation_factor = 1.0e-3;
 		while(true)
 		{
 			iteration++;
@@ -172,8 +174,6 @@ namespace CASENA
 				component->Equation(full_f);
 				component->Gradients(full_A);
 			}
-			full_f.Print();
-			full_A.Print();
 			// remove rows and columns of grounded node 0
 			for(unsigned int i = 1 ; i < n ; i++)
 			{
@@ -184,8 +184,8 @@ namespace CASENA
 				f(i - 1,0,full_f(i,0));
 			}
 			delta = A.Solve(f);
-			error = delta.SquaredNorm();
-			x = x - delta;
+			error = sqrt(delta.SquaredNorm()/(double)n);
+			x = x - (delta*under_relaxation_factor);
 			printf("iteration %u : error = %e\n",iteration,error);
 			if(error < tolerance)		break;
 		}

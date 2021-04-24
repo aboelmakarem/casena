@@ -155,7 +155,6 @@ namespace CASENA
 	}
 	void MOSFET::Equation(EZ::Math::Matrix& f) const
 	{
-		printf("eqn mosfet\n");
 		unsigned int id = ID();
 		// convention: all currents are flowing into the transistor (gate, 
 		// drain, source, body)
@@ -179,16 +178,12 @@ namespace CASENA
 		{
 			//TransientCurrents(i_gate,i_drain,i_source,i_body);
 		}
-		printf("done eqn mosfet\n");fflush(0);
 	}
 	void MOSFET::Gradients(EZ::Math::Matrix& A) const
 	{
-		printf("grad mosfet\n");
 		unsigned int id = ID();
 		if(Network::SteadyState())
 		{
-			printf("set grad @ SS : %u,%u,%u,%u\n",
-			drain_node_id,source_node_id,gate_node_id,body_node_id);
 			A(drain_node_id,id + 1,1.0);
 			A(source_node_id,id + 2,1.0);
 			// gate branch equation: ig = 0
@@ -217,7 +212,6 @@ namespace CASENA
 	}
 	void MOSFET::Update(const EZ::Math::Matrix& x,const unsigned int& id_offset)
 	{
-		printf("updating mosfet\n");
 		unsigned int id = ID() - id_offset;
 		unsigned int target_index = 0;
 		unsigned int source_index = 0;
@@ -231,7 +225,6 @@ namespace CASENA
 		currents[1] = x(id + 1,0);
 		currents[2] = x(id + 2,0);
 		currents[3] = x(id + 3,0);
-		printf("done updating\n");fflush(0);
 	}
 	void MOSFET::Print() const
 	{
@@ -293,7 +286,6 @@ namespace CASENA
 	}
 	double MOSFET::SteadyStateDrainCurrent() const
 	{
-		printf("SSDC 00\n");fflush(0);
 		double i_drain = 0.0;
 		Network* network = Network::GetNetwork();
 		// node voltages
@@ -304,7 +296,6 @@ namespace CASENA
 		double vt = threshold_voltage + gamma*(sqrt(2.0*phi + fabs(vs - vb)) - sqrt(2.0*phi));
 		double vgs = vg - vs;
 		double vds = vd - vs;
-		printf("SSDC 01\n");fflush(0);
 		if(np_type == 1)
 		{
 			// NMOS transistor
@@ -333,7 +324,6 @@ namespace CASENA
 			// PMOS transistor
 			
 		}
-		printf("SSDC 05\n");fflush(0);
 		return i_drain;
 	}
 	void MOSFET::TransientCurrents(double& i_gate,double& i_drain,double& i_source,double& i_body) const
