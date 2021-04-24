@@ -21,6 +21,8 @@ namespace CASENA
 		~Network();
 		void Reset();
 		bool Read(const char* filename);
+		void SetSteadyState();
+		void SetTransient();
 		static bool SteadyState();
 		static bool Transient();
 		Node* GetNode(const unsigned int& id) const;

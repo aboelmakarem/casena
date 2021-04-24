@@ -32,6 +32,8 @@ namespace CASENA
 		virtual bool ReadProperties(const EZ::List<EZ::String*>* line_tokens) = 0;
 	};
 	
+	#define MOSFET_CURRENT_COUNT	4
+	#define BJT_CURRENT_COUNT	3
 	class MOSFET : public Transistor
 	{
 	public:
@@ -45,11 +47,13 @@ namespace CASENA
 		void Gradients(EZ::Math::Matrix& A) const;
 		void Update(const EZ::Math::Matrix& x,const unsigned int& id_offset);
 		void Print() const;
+		static unsigned int CurrentCount();
 		
 	private:
 		void Initialize();
 		bool ReadProperties(const EZ::List<EZ::String*>* line_tokens);
-		void SteadyStateCurrents(double& i_gate,double& i_drain,double& i_source,double& i_body) const;
+		double SteadyStateDrainCurrent() const;
+		void SteadyStateDrainCurrentGradients(double& vg_grad,double& vd_grad,double& vs_grad,double& vb_grad) const;
 		void TransientCurrents(double& i_gate,double& i_drain,double& i_source,double& i_body) const;
 		// np_type: 1 for NMOS and 2 for PMOS, NMOS is default
 		int np_type;
@@ -65,7 +69,7 @@ namespace CASENA
 		double l;
 		double gamma;
 		double phi;
-		double currents[4*HistoryCount];
+		double currents[MOSFET_CURRENT_COUNT*HistoryCount];
 	};
 	
 	class BJT : public Transistor
@@ -81,6 +85,7 @@ namespace CASENA
 		void Gradients(EZ::Math::Matrix& A) const;
 		void Update(const EZ::Math::Matrix& x,const unsigned int& id_offset);
 		void Print() const;
+		static unsigned int CurrentCount();
 		
 	private:
 		void Initialize();
@@ -90,7 +95,7 @@ namespace CASENA
 		unsigned int base_node_id;
 		unsigned int emitter_node_id;
 		unsigned int collector_node_id;
-		double currents[3*HistoryCount];
+		double currents[BJT_CURRENT_COUNT*HistoryCount];
 	};
 }
 

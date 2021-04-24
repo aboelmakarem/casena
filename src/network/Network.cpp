@@ -119,6 +119,8 @@ namespace CASENA
 		fclose(file);
 		return true;
 	}
+	void Network::SetSteadyState(){analysis_type = 1;}
+	void Network::SetTransient(){analysis_type = 2;}
 	bool Network::SteadyState(){return (analysis_type == 1);}
 	bool Network::Transient(){return (analysis_type == 2);}
 	Node* Network::GetNode(const unsigned int& id) const{return nodes[id];}
@@ -170,6 +172,8 @@ namespace CASENA
 				component->Equation(full_f);
 				component->Gradients(full_A);
 			}
+			full_f.Print();
+			full_A.Print();
 			// remove rows and columns of grounded node 0
 			for(unsigned int i = 1 ; i < n ; i++)
 			{
@@ -246,6 +250,7 @@ int main(int argc,char** argv)
 		printf("error: failed to read input file %s\n",argv[1]);
 	}
 	network->Print();
+	network->SetSteadyState();
 	network->Run();
 	CASENA::Network::ReleaseNetwork();
 	return 0;
