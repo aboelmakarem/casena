@@ -164,7 +164,6 @@ namespace CASENA
 			// are zero and source current is equal to drain current 
 			// but in an opposite direction
 			double i_drain = SteadyStateDrainCurrent();
-			printf("got id = %e\n",i_drain);
 			f(drain_node_id,0,f(drain_node_id,0) + i_drain);
 			f(source_node_id,0,f(source_node_id,0) - i_drain);
 			f(id,0,0.0);
@@ -261,9 +260,9 @@ namespace CASENA
 		token = token->Next();
 		gate_node_id = atoi((*(token->Data()))());
 		token = token->Next();
-		source_node_id = atoi((*(token->Data()))());
-		token = token->Next();
 		drain_node_id = atoi((*(token->Data()))());
+		token = token->Next();
+		source_node_id = atoi((*(token->Data()))());
 		token = token->Next();
 		body_node_id = atoi((*(token->Data()))());
 		token = token->Next();
@@ -286,7 +285,6 @@ namespace CASENA
 	}
 	double MOSFET::SteadyStateDrainCurrent() const
 	{
-		double i_drain = 0.0;
 		Network* network = Network::GetNetwork();
 		// node voltages
 		double vg = network->GetNode(gate_node_id)->Voltage();
@@ -296,35 +294,38 @@ namespace CASENA
 		double vt = threshold_voltage + gamma*(sqrt(2.0*phi + fabs(vs - vb)) - sqrt(2.0*phi));
 		double vgs = vg - vs;
 		double vds = vd - vs;
+		double vov = vgs - vt;
+		// operation modes:
+		// 0: cut-off
+		// 1: triode region
+		// 2: saturation
+		int mode = -1;
+		double factor = mu*cox*w/l;
 		if(np_type == 1)
 		{
 			// NMOS transistor
-			double vov = vgs - vt;
-			if(vov < 0.0)
-			{
-				// cut-off mode operation
-				i_drain = 0.0;
-			}
+			if(vov < 0.0)			mode = 0;
 			else
 			{
-				if(vds >= vov)
-				{
-					// saturation mode operation
-					i_drain = 0.5*mu*cox*w/l*vov*vov*(1.0 + vds/early_voltage);
-				}
-				else
-				{
-					// triode mode operation
-					i_drain = mu*cox*w/l*(vov*vds - 0.5*vds*vds);
-				}
+				if(vds >= vov)		mode = 2;
+				else 				mode = 1;
 			}
 		}
 		else if(np_type == 2)
 		{
 			// PMOS transistor
-			
+			if(vov > 0.0)			mode = 0;
+			else
+			{
+				if(vds <= vov)		mode = 2;
+				else 				mode = 1;
+			}
+			factor = -factor;
 		}
-		return i_drain;
+		if(mode < 1)				return 0.0;
+		if(mode == 1)				return (factor*(vov*vds - 0.5*vds*vds));
+		if(mode == 2)				return (0.5*factor*vov*vov*(1.0 + vds/early_voltage));
+		return 0.0;
 	}
 	void MOSFET::TransientCurrents(double& i_gate,double& i_drain,double& i_source,double& i_body) const
 	{
@@ -346,46 +347,57 @@ namespace CASENA
 		double vd = network->GetNode(drain_node_id)->Voltage();
 		double vs = network->GetNode(source_node_id)->Voltage();
 		double vb = network->GetNode(body_node_id)->Voltage();
-		double vt = threshold_voltage + gamma*(sqrt(2.0*phi + fabs(vs - vb)) - sqrt(2.0*phi));
 		double sqrt_term = sqrt(2.0*phi + fabs(vs - vb));
+		double vt = threshold_voltage + gamma*(sqrt_term - sqrt(2.0*phi));
 		double dvtdvs = 0.5*gamma/sqrt_term;
 		if(vs < vb) 	dvtdvs = -dvtdvs;
 		double dvtdvb = -dvtdvs;
 		double vgs = vg - vs;
 		double vds = vd - vs;
+		double vov = vgs - vt;
+		// operation modes:
+		// 0: cut-off
+		// 1: triode region
+		// 2: saturation
+		int mode = -1;
+		double factor = mu*cox*w/l;
 		if(np_type == 1)
 		{
 			// NMOS transistor
-			double vov = vgs - vt;
-			// for cut-off mode operation, all gradients are zero
-			if(vov < 0.0)					return;
+			if(vov < 0.0)			mode = 0;
 			else
 			{
-				if(vds >= vov)
-				{
-					// saturation mode operation
-					double factor = mu*cox*w/l;
-					vg_grad = factor*vov*(1.0 + vds/early_voltage);
-					vd_grad = 0.5*factor*vov*vov*(1.0/early_voltage);
-					vs_grad = -factor*vov*((1.0 + vds/early_voltage)*(1.0 + dvtdvs) + 0.5*vov*(1.0/early_voltage));
-					vb_grad = -factor*vov*(1.0 + vds/early_voltage)*dvtdvb;
-				}
-				else
-				{
-					// triode mode operation
-					mu*cox*w/l*(vov*vds - 0.5*vds*vds);
-					double factor = mu*cox*w/l;
-					vg_grad = factor*vds;
-					vd_grad = factor*(vov - vds);
-					vs_grad = -factor*(vov + vds*dvtdvs);
-					vb_grad = -factor*vds*dvtdvb;
-				}
+				if(vds >= vov)		mode = 2;
+				else 				mode = 1;
 			}
 		}
 		else if(np_type == 2)
 		{
 			// PMOS transistor
-			
+			if(vov > 0.0)			mode = 0;
+			else
+			{
+				if(vds <= vov)		mode = 2;
+				else 				mode = 1;
+			}
+			factor = -factor;
+		}
+		if(mode < 1)				return;
+		if(mode == 1)
+		{
+			// triode mode operation
+			vg_grad = factor*vds;
+			vd_grad = factor*(vov - vds);
+			vs_grad = -factor*(vov + vds*dvtdvs);
+			vb_grad = -factor*vds*dvtdvb;
+		}
+		if(mode == 2)
+		{
+			// saturation mode operation
+			vg_grad = factor*vov*(1.0 + vds/early_voltage);
+			vd_grad = 0.5*factor*vov*vov*(1.0/early_voltage);
+			vs_grad = -factor*vov*((1.0 + vds/early_voltage)*(1.0 + dvtdvs) + 0.5*vov*(1.0/early_voltage));
+			vb_grad = -factor*vov*(1.0 + vds/early_voltage)*dvtdvb;
 		}
 	}
 	
